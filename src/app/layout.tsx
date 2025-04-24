@@ -1,7 +1,12 @@
+"use client";
+
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import DynamicWalletProvider from "@/components/layout/DynamicWalletProvider";
+
+// Import the global wallet implementation
+import '@sei-js/sei-global-wallet/eip6963';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
