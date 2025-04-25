@@ -4,7 +4,7 @@ import React from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/Button';
 import MainLayout from '@/components/layout/MainLayout';
-import { motion } from '@/lib/motion';
+import { motion } from 'framer-motion';
 import { ArrowRight, Check, Shield, Zap, Clock, Coins, Fingerprint, Users, FileCode } from 'lucide-react';
 
 // Animation variants for staggered animations
@@ -396,7 +396,7 @@ export default function Home() {
               <Button size="lg" variant="secondary" className="font-semibold">
                 Become a Creator
               </Button>
-              <Button size="lg" className="font-semibold bg-white text-primary-600 hover:bg-gray-100">
+              <Button size="lg" className="font-semibold bg-accent-500 hover:bg-accent-600 text-white">
                 Connect Wallet
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>

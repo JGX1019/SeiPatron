@@ -6,6 +6,11 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+// Helper to shorten address for display
+export const shortenAddress = (address: string): string => {
+  return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
+};
+
 // Format currency amounts (SEI tokens) for display
 export function formatCurrency(amount: number | string, decimals: number = 4): string {
   const value = typeof amount === 'string' ? parseFloat(amount) : amount;

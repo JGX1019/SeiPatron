@@ -1,13 +1,12 @@
-"use client";
+'use client';
 
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from '@/lib/motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
-import { cn } from '@/lib/utils';
-import { shortenAddress } from '@/lib/contract';
-import { Menu, X } from 'lucide-react';
-import { DynamicWidget } from '@dynamic-labs/sdk-react-core';
+import { cn, shortenAddress } from '@/lib/utils';
+import { Wallet, Menu, X, ChevronDown } from 'lucide-react';
+import { useWallet } from './WalletKitProvider';
 
 // Navigation menu items
 const navItems = [
@@ -20,12 +19,15 @@ const navItems = [
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isMounted, setIsMounted] = useState(false);
+  const { 
+    address, 
+    isConnecting, 
+    connectWallet, 
+    disconnectWallet 
+  } = useWallet();
 
   // Check scroll position to add background to navbar
   useEffect(() => {
-    setIsMounted(true);
-    
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 10);
     };
@@ -71,9 +73,44 @@ const Navbar = () => {
             ))}
           </nav>
 
-          {/* Dynamic Wallet Widget */}
+          {/* Connect Wallet button on the right */}
           <div className="flex items-center">
-            {isMounted && <DynamicWidget />}
+            {address ? (
+              <div className="relative group">
+                <Button
+                  variant="outline"
+                  className="flex items-center space-x-2 border border-primary-500 text-primary-600"
+                  rightIcon={<ChevronDown className="h-4 w-4" />}
+                >
+                  <Wallet className="h-4 w-4 mr-2" />
+                  <span>{shortenAddress(address)}</span>
+                </Button>
+                <div className="absolute right-0 top-full mt-2 w-48 invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-200 ease-in-out">
+                  <div className="py-1 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
+                    <Link href="/dashboard" className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
+                      Dashboard
+                    </Link>
+                    <Link href="/profile" className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
+                      Profile
+                    </Link>
+                    <button 
+                      onClick={disconnectWallet}
+                      className="w-full text-left px-4 py-2 text-sm text-error-600 hover:bg-gray-100 dark:hover:bg-gray-700"
+                    >
+                      Disconnect
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <Button
+                onClick={connectWallet}
+                isLoading={isConnecting}
+                leftIcon={<Wallet className="h-4 w-4" />}
+              >
+                Connect MetaMask
+              </Button>
+            )}
             
             {/* Mobile menu button */}
             <button

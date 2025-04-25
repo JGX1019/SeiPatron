@@ -1,74 +1,42 @@
 import { ethers } from 'ethers';
 import { seiTestnetConfig } from './contract';
-import { DynamicWallet } from './dynamic-wallet';
 
-// Create a singleton instance of Dynamic wallet
-const dynamicWalletInstance = new DynamicWallet({
-  environmentId: '8dc5a745-887b-47d8-a7b8-3b4d6306246d',
-  appName: 'SeiPatron'
-});
-
-// Initialize Dynamic wallet when the module loads
-if (typeof window !== 'undefined') {
-  dynamicWalletInstance.initialize().catch(console.error);
-}
-
-// Interface for wallet provider
-export interface WalletProvider {
-  provider: ethers.providers.Web3Provider | null;
-  signer: ethers.Signer | null;
-  address: string | null;
-  chainId: number | null;
-  isConnected: boolean;
-  isConnecting: boolean;
-  connectWallet: () => Promise<void>;
-  disconnectWallet: () => void;
-  switchToSeiNetwork: () => Promise<boolean>;
-}
-
-// Function to get Ethereum provider from window object
-export const getEthereumProvider = () => {
-  if (typeof window !== 'undefined' && typeof window.ethereum !== 'undefined') {
-    return window.ethereum;
-  }
-  return null;
+// Check if MetaMask is installed
+export const isMetaMaskInstalled = (): boolean => {
+  return typeof window !== 'undefined' && !!window.ethereum && !!window.ethereum.isMetaMask;
 };
 
-// Function to request connection to wallet
-export const connectWallet = async (): Promise<ethers.providers.Web3Provider | null> => {
+// Connect to MetaMask
+export const connectMetaMask = async (): Promise<ethers.providers.Web3Provider | null> => {
+  if (!isMetaMaskInstalled()) {
+    window.open('https://metamask.io/download/', '_blank');
+    throw new Error('MetaMask not installed. Please install MetaMask to continue.');
+  }
+  
   try {
-    // First try to connect with Dynamic wallet
-    const provider = await dynamicWalletInstance.connect();
-    if (provider) {
-      return provider;
-    }
-    
-    // Fallback to generic wallet provider
-    const ethereum = getEthereumProvider();
-    if (!ethereum) {
-      console.error('No Ethereum provider found. Please install a compatible wallet.');
-      return null;
-    }
-    
     // Request account access
-    await ethereum.request({ method: 'eth_requestAccounts' });
+    await window.ethereum!.request({ method: 'eth_requestAccounts' });
     
-    // Create ethers provider
-    return new ethers.providers.Web3Provider(ethereum as any);
+    // Create ethers provider - use non-null assertion since we already checked in isMetaMaskInstalled
+    const provider = new ethers.providers.Web3Provider(window.ethereum as ethers.providers.ExternalProvider);
+    
+    // Force switch to Sei testnet
+    await switchToSeiNetwork();
+    
+    return provider;
   } catch (error) {
-    console.error("Error connecting to wallet:", error);
+    console.error("Error connecting to MetaMask:", error);
     return null;
   }
 };
 
-// Function to switch to Sei Network
+// Switch to Sei Network
 export const switchToSeiNetwork = async (): Promise<boolean> => {
-  const ethereum = getEthereumProvider();
-  if (!ethereum) return false;
+  if (!window.ethereum) return false;
   
   try {
     // Try to switch to Sei network
-    await ethereum.request({
+    await window.ethereum.request({
       method: 'wallet_switchEthereumChain',
       params: [{ chainId: seiTestnetConfig.chainId }],
     });
@@ -77,7 +45,7 @@ export const switchToSeiNetwork = async (): Promise<boolean> => {
     // If the Sei network is not added to wallet yet, add it
     if (switchError.code === 4902) {
       try {
-        await ethereum.request({
+        await window.ethereum.request({
           method: 'wallet_addEthereumChain',
           params: [
             {
@@ -100,7 +68,7 @@ export const switchToSeiNetwork = async (): Promise<boolean> => {
   }
 };
 
-// Function to get user's ETH address
+// Get the user's address
 export const getAddress = async (provider: ethers.providers.Web3Provider): Promise<string | null> => {
   try {
     const signer = provider.getSigner();
@@ -111,41 +79,33 @@ export const getAddress = async (provider: ethers.providers.Web3Provider): Promi
   }
 };
 
-// Get Dynamic wallet instance
-export const getDynamicWallet = () => {
-  return dynamicWalletInstance;
-};
-
 // Listen for account changes
-export const setupAccountChangedListener = (callback: (accounts: string[]) => void): () => void => {
-  const ethereum = getEthereumProvider();
-  if (!ethereum) return () => {};
-  
-  ethereum.on('accountsChanged', callback);
-  
-  // Return cleanup function
-  return () => {
-    ethereum.removeListener('accountsChanged', callback);
-  };
+export const setupAccountChangedListener = (callback: (accounts: string[]) => void): void => {
+  if (window.ethereum) {
+    window.ethereum.on('accountsChanged', callback);
+  }
 };
 
 // Listen for chain changes
-export const setupChainChangedListener = (callback: (chainId: string) => void): () => void => {
-  const ethereum = getEthereumProvider();
-  if (!ethereum) return () => {};
-  
-  ethereum.on('chainChanged', callback);
-  
-  // Return cleanup function
-  return () => {
-    ethereum.removeListener('chainChanged', callback);
-  };
+export const setupChainChangedListener = (callback: (chainId: string) => void): void => {
+  if (window.ethereum) {
+    window.ethereum.on('chainChanged', callback);
+  }
+};
+
+// Remove listeners when no longer needed
+export const removeListeners = (): void => {
+  if (window.ethereum) {
+    window.ethereum.removeListener('accountsChanged', () => {});
+    window.ethereum.removeListener('chainChanged', () => {});
+  }
 };
 
 // Types for window.ethereum
 declare global {
   interface Window {
     ethereum?: {
+      isMetaMask?: boolean;
       request: (request: { method: string; params?: any[] }) => Promise<any>;
       on: (event: string, callback: any) => void;
       removeListener: (event: string, callback: any) => void;
